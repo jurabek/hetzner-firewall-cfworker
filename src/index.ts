@@ -37,17 +37,25 @@ async function handleRequest(env: Env, ctx: ExecutionContext) {
 		})
 	}
 
+	console.log('Starting firewall update for ID:', env.FIREWALL_ID)
+
 	const portList = env.PORTS.split(',')
 
 	// get IPs, error if not 200
+	console.log('Fetching Cloudflare IP ranges...')
 	const ipv4List = await fetchList('https://www.cloudflare.com/ips-v4/')
 	const ipv6List = await fetchList('https://www.cloudflare.com/ips-v6/')
+
+	console.log(`Found ${ipv4List.length} IPv4 ranges and ${ipv6List.length} IPv6 ranges`)
 
 	// compile list into rules
 	let rules = compileRules([ipv4List, ipv6List], portList)
 
+	console.log(`Created ${rules.length} firewall rules for ports: ${portList.join(', ')}`)
+
 	// rename the firewall
 	// error if this fails
+	console.log('Updating firewall name...')
 
 	const time = new Date()
 
@@ -69,6 +77,7 @@ async function handleRequest(env: Env, ctx: ExecutionContext) {
 	}
 
 	// add all the rules
+	console.log('Applying firewall rules...')
 	const finalResp = await fetch(`https://api.hetzner.cloud/v1/firewalls/${env.FIREWALL_ID}/actions/set_rules`, {
 		method: 'POST',
 		headers: {
@@ -81,7 +90,20 @@ async function handleRequest(env: Env, ctx: ExecutionContext) {
 	}
 	)
 
-	return finalResp
+	if (finalResp.status !== 200 && finalResp.status !== 201) {
+		const errorText = await finalResp.text()
+		console.log('Failed to apply firewall rules: ' + errorText)
+		throw 'Failed to apply firewall rules'
+	}
+
+	console.log('Firewall updated successfully!')
+
+	return new Response('Firewall updated successfully', {
+		status: 200,
+		headers: {
+			'Content-Type': 'application/json'
+		}
+	})
 }
 
 async function fetchList(url: string) {
@@ -90,7 +112,8 @@ async function fetchList(url: string) {
 	if (resp.status !== 200) {
 		throw 'Failed to fetch ' + url
 	} else {
-		return (await resp.text()).split(/\r?\n/)
+		const text = await resp.text()
+		return text.split(/\r?\n/).filter(line => line.trim() !== '')
 	}
 }
 

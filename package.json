@@ -3,12 +3,19 @@
   "version": "0.0.0",
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240620.0",
+    "@types/node": "^24.10.0",
+    "tsx": "^4.20.6",
     "typescript": "^5.5.3",
-    "wrangler": "^3.62.0"
+    "wrangler": "^4.45.4"
   },
   "private": true,
   "scripts": {
     "start": "wrangler dev",
-    "deploy": "wrangler publish"
+    "deploy": "wrangler publish",
+    "cli": "tsx src/cli.ts",
+    "update-firewall": "tsx src/cli.ts"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3"
   }
 }
